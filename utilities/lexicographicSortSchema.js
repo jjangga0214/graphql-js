@@ -1,219 +1,141 @@
 "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.lexicographicSortSchema = lexicographicSortSchema;
-
-var _keyValMap = _interopRequireDefault(require("../jsutils/keyValMap"));
-
-var _objectValues = _interopRequireDefault(require("../jsutils/objectValues"));
-
-var _schema = require("../type/schema");
-
-var _directives = require("../type/directives");
-
-var _definition = require("../type/definition");
-
-var _scalars = require("../type/scalars");
-
-var _introspection = require("../type/introspection");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; var ownKeys = Object.keys(source); if (typeof Object.getOwnPropertySymbols === 'function') { ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) { return Object.getOwnPropertyDescriptor(source, sym).enumerable; })); } ownKeys.forEach(function (key) { _defineProperty(target, key, source[key]); }); } return target; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.lexicographicSortSchema = void 0;
+const inspect_js_1 = require("../jsutils/inspect.js");
+const invariant_js_1 = require("../jsutils/invariant.js");
+const naturalCompare_js_1 = require("../jsutils/naturalCompare.js");
+const definition_js_1 = require("../type/definition.js");
+const directives_js_1 = require("../type/directives.js");
+const introspection_js_1 = require("../type/introspection.js");
+const schema_js_1 = require("../type/schema.js");
 /**
  * Sort GraphQLSchema.
+ *
+ * This function returns a sorted copy of the given GraphQLSchema.
  */
 function lexicographicSortSchema(schema) {
-  var cache = Object.create(null);
-
-  var sortMaybeType = function sortMaybeType(maybeType) {
-    return maybeType && sortNamedType(maybeType);
-  };
-
-  return new _schema.GraphQLSchema({
-    types: sortTypes((0, _objectValues.default)(schema.getTypeMap())),
-    directives: sortByName(schema.getDirectives()).map(sortDirective),
-    query: sortMaybeType(schema.getQueryType()),
-    mutation: sortMaybeType(schema.getMutationType()),
-    subscription: sortMaybeType(schema.getSubscriptionType()),
-    astNode: schema.astNode
-  });
-
-  function sortDirective(directive) {
-    return new _directives.GraphQLDirective({
-      name: directive.name,
-      description: directive.description,
-      locations: sortBy(directive.locations, function (x) {
-        return x;
-      }),
-      args: sortArgs(directive.args),
-      astNode: directive.astNode
+    const schemaConfig = schema.toConfig();
+    const typeMap = new Map(sortByName(schemaConfig.types).map((type) => [
+        type.name,
+        sortNamedType(type),
+    ]));
+    return new schema_js_1.GraphQLSchema({
+        ...schemaConfig,
+        types: Array.from(typeMap.values()),
+        directives: sortByName(schemaConfig.directives).map(sortDirective),
+        query: replaceMaybeType(schemaConfig.query),
+        mutation: replaceMaybeType(schemaConfig.mutation),
+        subscription: replaceMaybeType(schemaConfig.subscription),
     });
-  }
-
-  function sortArgs(args) {
-    return (0, _keyValMap.default)(sortByName(args), function (arg) {
-      return arg.name;
-    }, function (arg) {
-      return _objectSpread({}, arg, {
-        type: sortType(arg.type)
-      });
-    });
-  }
-
-  function sortFields(fieldsMap) {
-    return sortObjMap(fieldsMap, function (field) {
-      return {
-        type: sortType(field.type),
-        args: sortArgs(field.args),
-        resolve: field.resolve,
-        subscribe: field.subscribe,
-        deprecationReason: field.deprecationReason,
-        description: field.description,
-        astNode: field.astNode
-      };
-    });
-  }
-
-  function sortInputFields(fieldsMap) {
-    return sortObjMap(fieldsMap, function (field) {
-      return {
-        type: sortType(field.type),
-        defaultValue: field.defaultValue,
-        description: field.description,
-        astNode: field.astNode
-      };
-    });
-  }
-
-  function sortType(type) {
-    if ((0, _definition.isListType)(type)) {
-      return new _definition.GraphQLList(sortType(type.ofType));
-    } else if ((0, _definition.isNonNullType)(type)) {
-      return new _definition.GraphQLNonNull(sortType(type.ofType));
+    function replaceType(type) {
+        if ((0, definition_js_1.isListType)(type)) {
+            // @ts-expect-error
+            return new definition_js_1.GraphQLList(replaceType(type.ofType));
+        }
+        else if ((0, definition_js_1.isNonNullType)(type)) {
+            // @ts-expect-error
+            return new definition_js_1.GraphQLNonNull(replaceType(type.ofType));
+        }
+        // @ts-expect-error FIXME: TS Conversion
+        return replaceNamedType(type);
     }
-
-    return sortNamedType(type);
-  }
-
-  function sortTypes(arr) {
-    return sortByName(arr).map(sortNamedType);
-  }
-
-  function sortNamedType(type) {
-    if ((0, _scalars.isSpecifiedScalarType)(type) || (0, _introspection.isIntrospectionType)(type)) {
-      return type;
+    function replaceNamedType(type) {
+        return typeMap.get(type.name);
     }
-
-    var sortedType = cache[type.name];
-
-    if (!sortedType) {
-      sortedType = sortNamedTypeImpl(type);
-      cache[type.name] = sortedType;
+    function replaceMaybeType(maybeType) {
+        return maybeType && replaceNamedType(maybeType);
     }
-
-    return sortedType;
-  }
-
-  function sortNamedTypeImpl(type) {
-    if ((0, _definition.isScalarType)(type)) {
-      return type;
-    } else if ((0, _definition.isObjectType)(type)) {
-      return new _definition.GraphQLObjectType({
-        name: type.name,
-        interfaces: function interfaces() {
-          return sortTypes(type.getInterfaces());
-        },
-        fields: function fields() {
-          return sortFields(type.getFields());
-        },
-        isTypeOf: type.isTypeOf,
-        description: type.description,
-        astNode: type.astNode,
-        extensionASTNodes: type.extensionASTNodes
-      });
-    } else if ((0, _definition.isInterfaceType)(type)) {
-      return new _definition.GraphQLInterfaceType({
-        name: type.name,
-        fields: function fields() {
-          return sortFields(type.getFields());
-        },
-        resolveType: type.resolveType,
-        description: type.description,
-        astNode: type.astNode,
-        extensionASTNodes: type.extensionASTNodes
-      });
-    } else if ((0, _definition.isUnionType)(type)) {
-      return new _definition.GraphQLUnionType({
-        name: type.name,
-        types: function types() {
-          return sortTypes(type.getTypes());
-        },
-        resolveType: type.resolveType,
-        description: type.description,
-        astNode: type.astNode
-      });
-    } else if ((0, _definition.isEnumType)(type)) {
-      return new _definition.GraphQLEnumType({
-        name: type.name,
-        values: (0, _keyValMap.default)(sortByName(type.getValues()), function (val) {
-          return val.name;
-        }, function (val) {
-          return {
-            value: val.value,
-            deprecationReason: val.deprecationReason,
-            description: val.description,
-            astNode: val.astNode
-          };
-        }),
-        description: type.description,
-        astNode: type.astNode
-      });
-    } else if ((0, _definition.isInputObjectType)(type)) {
-      return new _definition.GraphQLInputObjectType({
-        name: type.name,
-        fields: function fields() {
-          return sortInputFields(type.getFields());
-        },
-        description: type.description,
-        astNode: type.astNode
-      });
+    function sortDirective(directive) {
+        const config = directive.toConfig();
+        return new directives_js_1.GraphQLDirective({
+            ...config,
+            locations: sortBy(config.locations, (x) => x),
+            args: sortArgs(config.args),
+        });
     }
-
-    throw new Error("Unknown type: \"".concat(type, "\""));
-  }
+    function sortArgs(args) {
+        return sortObjMap(args, (arg) => ({
+            ...arg,
+            type: replaceType(arg.type),
+        }));
+    }
+    function sortFields(fieldsMap) {
+        return sortObjMap(fieldsMap, (field) => ({
+            ...field,
+            type: replaceType(field.type),
+            args: field.args && sortArgs(field.args),
+        }));
+    }
+    function sortInputFields(fieldsMap) {
+        return sortObjMap(fieldsMap, (field) => ({
+            ...field,
+            type: replaceType(field.type),
+        }));
+    }
+    function sortTypes(array) {
+        return sortByName(array).map(replaceNamedType);
+    }
+    function sortNamedType(type) {
+        if ((0, definition_js_1.isScalarType)(type) || (0, introspection_js_1.isIntrospectionType)(type)) {
+            return type;
+        }
+        if ((0, definition_js_1.isObjectType)(type)) {
+            const config = type.toConfig();
+            return new definition_js_1.GraphQLObjectType({
+                ...config,
+                interfaces: () => sortTypes(config.interfaces),
+                fields: () => sortFields(config.fields),
+            });
+        }
+        if ((0, definition_js_1.isInterfaceType)(type)) {
+            const config = type.toConfig();
+            return new definition_js_1.GraphQLInterfaceType({
+                ...config,
+                interfaces: () => sortTypes(config.interfaces),
+                fields: () => sortFields(config.fields),
+            });
+        }
+        if ((0, definition_js_1.isUnionType)(type)) {
+            const config = type.toConfig();
+            return new definition_js_1.GraphQLUnionType({
+                ...config,
+                types: () => sortTypes(config.types),
+            });
+        }
+        if ((0, definition_js_1.isEnumType)(type)) {
+            const config = type.toConfig();
+            return new definition_js_1.GraphQLEnumType({
+                ...config,
+                values: sortObjMap(config.values, (value) => value),
+            });
+        }
+        if ((0, definition_js_1.isInputObjectType)(type)) {
+            const config = type.toConfig();
+            return new definition_js_1.GraphQLInputObjectType({
+                ...config,
+                fields: () => sortInputFields(config.fields),
+            });
+        }
+        /* c8 ignore next 3 */
+        // Not reachable, all possible types have been considered.
+        (false) || (0, invariant_js_1.invariant)(false, 'Unexpected type: ' + (0, inspect_js_1.inspect)(type));
+    }
 }
-
+exports.lexicographicSortSchema = lexicographicSortSchema;
 function sortObjMap(map, sortValueFn) {
-  var sortedMap = Object.create(null);
-  var sortedKeys = sortBy(Object.keys(map), function (x) {
-    return x;
-  });
-
-  for (var _i = 0; _i < sortedKeys.length; _i++) {
-    var key = sortedKeys[_i];
-    var value = map[key];
-    sortedMap[key] = sortValueFn ? sortValueFn(value) : value;
-  }
-
-  return sortedMap;
+    const sortedMap = Object.create(null);
+    for (const key of Object.keys(map).sort(naturalCompare_js_1.naturalCompare)) {
+        sortedMap[key] = sortValueFn(map[key]);
+    }
+    return sortedMap;
 }
-
 function sortByName(array) {
-  return sortBy(array, function (obj) {
-    return obj.name;
-  });
+    return sortBy(array, (obj) => obj.name);
 }
-
 function sortBy(array, mapToKey) {
-  return array.slice().sort(function (obj1, obj2) {
-    var key1 = mapToKey(obj1);
-    var key2 = mapToKey(obj2);
-    return key1.localeCompare(key2);
-  });
+    return array.slice().sort((obj1, obj2) => {
+        const key1 = mapToKey(obj1);
+        const key2 = mapToKey(obj2);
+        return (0, naturalCompare_js_1.naturalCompare)(key1, key2);
+    });
 }

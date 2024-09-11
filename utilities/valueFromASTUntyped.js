@@ -1,27 +1,8 @@
 "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.valueFromASTUntyped = valueFromASTUntyped;
-
-var _keyValMap = _interopRequireDefault(require("../jsutils/keyValMap"));
-
-var _isInvalid = _interopRequireDefault(require("../jsutils/isInvalid"));
-
-var _kinds = require("../language/kinds");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-/**
- * Copyright (c) 2015-present, Facebook, Inc.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- *  strict
- */
-
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.valueFromASTUntyped = void 0;
+const keyValMap_js_1 = require("../jsutils/keyValMap.js");
+const kinds_js_1 = require("../language/kinds.js");
 /**
  * Produces a JavaScript value given a GraphQL Value AST.
  *
@@ -39,39 +20,23 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  *
  */
 function valueFromASTUntyped(valueNode, variables) {
-  switch (valueNode.kind) {
-    case _kinds.Kind.NULL:
-      return null;
-
-    case _kinds.Kind.INT:
-      return parseInt(valueNode.value, 10);
-
-    case _kinds.Kind.FLOAT:
-      return parseFloat(valueNode.value);
-
-    case _kinds.Kind.STRING:
-    case _kinds.Kind.ENUM:
-    case _kinds.Kind.BOOLEAN:
-      return valueNode.value;
-
-    case _kinds.Kind.LIST:
-      return valueNode.values.map(function (node) {
-        return valueFromASTUntyped(node, variables);
-      });
-
-    case _kinds.Kind.OBJECT:
-      return (0, _keyValMap.default)(valueNode.fields, function (field) {
-        return field.name.value;
-      }, function (field) {
-        return valueFromASTUntyped(field.value, variables);
-      });
-
-    case _kinds.Kind.VARIABLE:
-      var variableName = valueNode.name.value;
-      return variables && !(0, _isInvalid.default)(variables[variableName]) ? variables[variableName] : undefined;
-  }
-  /* istanbul ignore next */
-
-
-  throw new Error('Unexpected value kind: ' + valueNode.kind);
+    switch (valueNode.kind) {
+        case kinds_js_1.Kind.NULL:
+            return null;
+        case kinds_js_1.Kind.INT:
+            return parseInt(valueNode.value, 10);
+        case kinds_js_1.Kind.FLOAT:
+            return parseFloat(valueNode.value);
+        case kinds_js_1.Kind.STRING:
+        case kinds_js_1.Kind.ENUM:
+        case kinds_js_1.Kind.BOOLEAN:
+            return valueNode.value;
+        case kinds_js_1.Kind.LIST:
+            return valueNode.values.map((node) => valueFromASTUntyped(node, variables));
+        case kinds_js_1.Kind.OBJECT:
+            return (0, keyValMap_js_1.keyValMap)(valueNode.fields, (field) => field.name.value, (field) => valueFromASTUntyped(field.value, variables));
+        case kinds_js_1.Kind.VARIABLE:
+            return variables?.[valueNode.name.value];
+    }
 }
+exports.valueFromASTUntyped = valueFromASTUntyped;

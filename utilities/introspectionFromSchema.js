@@ -1,29 +1,10 @@
 "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.introspectionFromSchema = introspectionFromSchema;
-
-var _invariant = _interopRequireDefault(require("../jsutils/invariant"));
-
-var _introspectionQuery = require("./introspectionQuery");
-
-var _execute = require("../execution/execute");
-
-var _parser = require("../language/parser");
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-/**
- * Copyright (c) 2015-present, Facebook, Inc.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- *  strict
- */
-
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.introspectionFromSchema = void 0;
+const invariant_js_1 = require("../jsutils/invariant.js");
+const parser_js_1 = require("../language/parser.js");
+const execute_js_1 = require("../execution/execute.js");
+const getIntrospectionQuery_js_1 = require("./getIntrospectionQuery.js");
 /**
  * Build an IntrospectionQuery from a GraphQLSchema
  *
@@ -34,8 +15,17 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * of the server context, for instance when doing schema comparisons.
  */
 function introspectionFromSchema(schema, options) {
-  var queryAST = (0, _parser.parse)((0, _introspectionQuery.getIntrospectionQuery)(options));
-  var result = (0, _execute.execute)(schema, queryAST);
-  !(!result.then && !result.errors && result.data) ? (0, _invariant.default)(0) : void 0;
-  return result.data;
+    const optionsWithDefaults = {
+        specifiedByUrl: true,
+        directiveIsRepeatable: true,
+        schemaDescription: true,
+        inputValueDeprecation: true,
+        oneOf: true,
+        ...options,
+    };
+    const document = (0, parser_js_1.parse)((0, getIntrospectionQuery_js_1.getIntrospectionQuery)(optionsWithDefaults));
+    const result = (0, execute_js_1.executeSync)({ schema, document });
+    (result.errors == null && result.data != null) || (0, invariant_js_1.invariant)(false);
+    return result.data;
 }
+exports.introspectionFromSchema = introspectionFromSchema;

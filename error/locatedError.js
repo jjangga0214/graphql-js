@@ -1,32 +1,28 @@
 "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.locatedError = locatedError;
-
-var _GraphQLError = require("./GraphQLError");
-
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.locatedError = void 0;
+const toError_js_1 = require("../jsutils/toError.js");
+const GraphQLError_js_1 = require("./GraphQLError.js");
 /**
- * Copyright (c) 2015-present, Facebook, Inc.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- *  strict
- */
-
-/**
- * Given an arbitrary Error, presumably thrown while attempting to execute a
+ * Given an arbitrary value, presumably thrown while attempting to execute a
  * GraphQL operation, produce a new GraphQLError aware of the location in the
  * document responsible for the original Error.
  */
-function locatedError(originalError, nodes, path) {
-  // Note: this uses a brand-check to support GraphQL errors originating from
-  // other contexts.
-  if (originalError && Array.isArray(originalError.path)) {
-    return originalError;
-  }
-
-  return new _GraphQLError.GraphQLError(originalError && originalError.message, originalError && originalError.nodes || nodes, originalError && originalError.source, originalError && originalError.positions, path, originalError);
+function locatedError(rawOriginalError, nodes, path) {
+    const originalError = (0, toError_js_1.toError)(rawOriginalError);
+    // Note: this uses a brand-check to support GraphQL errors originating from other contexts.
+    if (isLocatedGraphQLError(originalError)) {
+        return originalError;
+    }
+    return new GraphQLError_js_1.GraphQLError(originalError.message, {
+        nodes: originalError.nodes ?? nodes,
+        source: originalError.source,
+        positions: originalError.positions,
+        path,
+        originalError,
+    });
+}
+exports.locatedError = locatedError;
+function isLocatedGraphQLError(error) {
+    return Array.isArray(error.path);
 }

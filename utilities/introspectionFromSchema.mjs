@@ -1,16 +1,7 @@
-/**
- * Copyright (c) 2015-present, Facebook, Inc.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- *  strict
- */
-import invariant from '../jsutils/invariant';
-import { getIntrospectionQuery } from './introspectionQuery';
-import { execute } from '../execution/execute';
-import { parse } from '../language/parser';
-
+import { invariant } from "../jsutils/invariant.mjs";
+import { parse } from "../language/parser.mjs";
+import { executeSync } from "../execution/execute.mjs";
+import { getIntrospectionQuery } from "./getIntrospectionQuery.mjs";
 /**
  * Build an IntrospectionQuery from a GraphQLSchema
  *
@@ -21,8 +12,16 @@ import { parse } from '../language/parser';
  * of the server context, for instance when doing schema comparisons.
  */
 export function introspectionFromSchema(schema, options) {
-  var queryAST = parse(getIntrospectionQuery(options));
-  var result = execute(schema, queryAST);
-  !(!result.then && !result.errors && result.data) ? invariant(0) : void 0;
-  return result.data;
+    const optionsWithDefaults = {
+        specifiedByUrl: true,
+        directiveIsRepeatable: true,
+        schemaDescription: true,
+        inputValueDeprecation: true,
+        oneOf: true,
+        ...options,
+    };
+    const document = parse(getIntrospectionQuery(optionsWithDefaults));
+    const result = executeSync({ schema, document });
+    (result.errors == null && result.data != null) || invariant(false);
+    return result.data;
 }

@@ -1,41 +1,20 @@
 "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.typeFromAST = typeFromAST;
-
-var _kinds = require("../language/kinds");
-
-var _definition = require("../type/definition");
-
-/**
- * Copyright (c) 2015-present, Facebook, Inc.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- *  strict
- */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.typeFromAST = void 0;
+const kinds_js_1 = require("../language/kinds.js");
+const definition_js_1 = require("../type/definition.js");
 function typeFromAST(schema, typeNode) {
-  /* eslint-enable no-redeclare */
-  var innerType;
-
-  if (typeNode.kind === _kinds.Kind.LIST_TYPE) {
-    innerType = typeFromAST(schema, typeNode.type);
-    return innerType && (0, _definition.GraphQLList)(innerType);
-  }
-
-  if (typeNode.kind === _kinds.Kind.NON_NULL_TYPE) {
-    innerType = typeFromAST(schema, typeNode.type);
-    return innerType && (0, _definition.GraphQLNonNull)(innerType);
-  }
-
-  if (typeNode.kind === _kinds.Kind.NAMED_TYPE) {
-    return schema.getType(typeNode.name.value);
-  }
-  /* istanbul ignore next */
-
-
-  throw new Error("Unexpected type kind: ".concat(typeNode.kind, "."));
+    switch (typeNode.kind) {
+        case kinds_js_1.Kind.LIST_TYPE: {
+            const innerType = typeFromAST(schema, typeNode.type);
+            return innerType && new definition_js_1.GraphQLList(innerType);
+        }
+        case kinds_js_1.Kind.NON_NULL_TYPE: {
+            const innerType = typeFromAST(schema, typeNode.type);
+            return innerType && new definition_js_1.GraphQLNonNull(innerType);
+        }
+        case kinds_js_1.Kind.NAMED_TYPE:
+            return schema.getType(typeNode.name.value);
+    }
 }
+exports.typeFromAST = typeFromAST;
